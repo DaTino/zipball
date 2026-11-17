@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="MovementTuning" format=3]
+
+[ext_resource type="Script" path="res://src/player/movement_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+gravity = 9.8
+air_accel = 8.0
+air_max_speed = 10.0
+air_control_follows_pitch = false
+max_speed = 45.0
+drag = 0.02
+grapple_range = 80.0
+aim_assist_degrees = 3.0
+reel_speed = 10.0
+min_rope_length = 1.5
+max_rope_length = 90.0
+max_rope_pull_speed = 25.0
+hook_speed = 200.0
+pull_speed = 30.0
+pull_accel = 120.0
+pull_keep_sideways = 0.5
+hang_distance = 2.0
+bounce = 0.3
+pipe_friction = 0.1
+outside_margin = 1.0
+pull_back_accel = 20.0
+pull_back_per_meter = 4.0
+pull_back_damping = 2.0

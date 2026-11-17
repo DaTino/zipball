@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/match/match.gd" id="1_match"]
+[ext_resource type="PackedScene" path="res://src/arena/arena.tscn" id="2_arena"]
+[ext_resource type="PackedScene" path="res://src/ball/ball.tscn" id="3_ball"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_top_color = Color(0.12, 0.35, 0.9, 1)
+sky_horizon_color = Color(0.62, 0.82, 1, 1)
+ground_bottom_color = Color(0.2, 0.42, 0.22, 1)
+ground_horizon_color = Color(0.62, 0.82, 1, 1)
+
+[sub_resource type="Sky" id="Sky_main"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_main")
+ambient_light_source = 2
+ambient_light_color = Color(0.9, 0.9, 0.95, 1)
+ambient_light_energy = 0.6
+fog_enabled = true
+fog_light_color = Color(0.62, 0.82, 1, 1)
+fog_density = 0.004
+fog_sky_affect = 0.0
+
+[node name="Match" type="Node3D"]
+script = ExtResource("1_match")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8660254, -0.40957603, 0.28678823, 0, 0.57357645, 0.81915206, -0.5, -0.7094065, 0.49673176, 0, 60, 0)
+
+[node name="Arena" parent="." instance=ExtResource("2_arena")]
+unique_name_in_owner = true
+
+[node name="Ball" parent="." instance=ExtResource("3_ball")]
+unique_name_in_owner = true

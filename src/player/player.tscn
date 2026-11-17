@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/player/player.gd" id="1_player"]
+[ext_resource type="Resource" path="res://src/player/movement_tuning.tres" id="2_tuning"]
+[ext_resource type="Script" path="res://src/player/player_visuals.gd" id="3_visuals"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_body"]
+radius = 0.45
+
+[sub_resource type="SphereMesh" id="SphereMesh_shell"]
+radius = 0.45
+height = 0.9
+radial_segments = 12
+rings = 6
+
+[sub_resource type="BoxMesh" id="BoxMesh_visor"]
+size = Vector3(0.5, 0.16, 0.14)
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 1
+motion_mode = 1
+wall_min_slide_angle = 0.0
+script = ExtResource("1_player")
+tuning = ExtResource("2_tuning")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_body")
+
+[node name="Body" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="Shell" type="MeshInstance3D" parent="Body"]
+unique_name_in_owner = true
+mesh = SubResource("SphereMesh_shell")
+
+[node name="Visor" type="MeshInstance3D" parent="Body"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -0.4)
+mesh = SubResource("BoxMesh_visor")
+
+[node name="Visuals" type="Node3D" parent="."]
+script = ExtResource("3_visuals")

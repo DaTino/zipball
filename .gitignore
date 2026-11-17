@@ -1,0 +1,17 @@
+# Godot cache and import data (regenerated automatically)
+.godot/
+
+# Export output
+/build/
+
+# Scratch output (screenshots, previews, recordings).
+# Keep tmp/.gdignore so Godot never imports what lands here.
+/tmp/*
+!/tmp/.gdignore
+
+# Blender backup files
+*.blend1
+
+# OS clutter
+Thumbs.db
+.DS_Store

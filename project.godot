@@ -1,0 +1,45 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Zipball"
+config/description="Grappling-hook arena sports game (working title)."
+run/main_scene="res://src/match/match.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[autoload]
+
+DevTools="*res://src/dev/dev_tools.gd"
+
+[debug]
+
+gdscript/warnings/untyped_declaration=1
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[layer_names]
+
+3d_physics/layer_1="arena"
+3d_physics/layer_2="players"
+3d_physics/layer_3="ball"
+
+[physics]
+
+common/physics_jitter_fix=0.0
+common/physics_interpolation=true
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
