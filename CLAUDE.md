@@ -23,16 +23,22 @@ grappling hooks and throw a ball into the other team's net.
 | Import assets and refresh class caches (after adding files or a `class_name`) | `tools/godot.sh --headless --import` |
 | Run all tests | `tools/godot.sh --headless --script res://tools/run_tests.gd` |
 | Run matching tests | `... run_tests.gd -- --filter=<text>` (matches `file:test_name`) |
-| Screenshot the main scene | `tools/godot.sh -- --screenshot=tmp/screenshots/main.png`, then Read the PNG |
+| Screenshot the main scene (the menu) | `tools/godot.sh -- --screenshot=tmp/screenshots/main.png`, then Read the PNG |
+| Screenshot a match (default settings) | `tools/godot.sh res://src/match/match.tscn -- --screenshot=tmp/screenshots/match.png` |
 | Screenshot another scene | `tools/godot.sh res://src/<path>.tscn -- --screenshot=tmp/screenshots/<name>.png` |
 | Screenshot from a fixed camera | `... -- --screenshot=tmp/screenshots/x.png --camera=75,45,95 --look-at=0,0,0` |
-| Run headless for N frames (surfaces runtime errors) | `tools/godot.sh --headless --quit-after 300` |
+| Run headless for N frames (surfaces runtime errors) | `tools/godot.sh --headless --quit-after 300` (the menu; put `res://src/match/match.tscn` before `--quit-after` for a match) |
 | Record a frame sequence (folder must exist first) | `mkdir -p tmp/movie && tools/godot.sh --write-movie tmp/movie/frame.png --fixed-fps 30 --quit-after 90` (writes `frame00000000.png`, ...) |
 | Open the editor (for the user) | `tools/godot.sh --editor` |
 | Play (for the user, no terminal needed) | Double-click `play.cmd` |
 
 Screenshots and recordings open a real game window on the user's screen for a moment. `--screenshot`
 cannot be combined with `--headless`. Add `--frames=<n>` to wait longer before capturing.
+
+One-off `extends SceneTree` scripts run with `--script` can't create the keyboard player:
+`LocalInputSource` uses the `DevTools` autoload, which isn't a known name there, so `Match` logs
+compile errors and adds no player. Give them a player with `match.add_player(ScriptedInputSource.new(), 0, true)`.
+Put such scripts in `tmp/` and add a quit timer, so a script error can't leave a window hanging open.
 
 ## Definition of done
 
@@ -43,15 +49,16 @@ cannot be combined with `--headless`. Add `--frames=<n>` to wait longer before c
 ## Project layout
 
 ```
-src/arena/    Pipe lattice geometry (Lattice), tumbling (ArenaSpin), the Arena node
+src/arena/    Zip point geometry, beams or orbs (Lattice), tumbling (ArenaSpin), the Arena node
 src/player/   Player simulation, movement math (Movement), MovementTuning, visuals, camera
 src/input/    PlayerInput and input sources (LocalInputSource, ScriptedInputSource)
-src/match/    Match: runs the tick loop and spawns players. match.tscn is the main scene
-src/ball/     Ball: frozen at the faceoff spot until grabbed, carried, thrown, flies and bounces
-src/ui/       HUD, TargetArrows (edge arrows toward the ball and goals)
+src/match/    Match: runs the tick loop and spawns players. MatchSettings: the menu's choices
+src/ball/     Ball: frozen at the faceoff spot until grabbed or hooked, carried, thrown, flies and bounces
+src/ui/       MainMenu (main_menu.tscn is the main scene), HUD, TargetArrows (edge arrows to the ball and goals)
+src/scenery/  Venues (Scenery): one scene per environment with sky, sun, fog, floor, peaks (MountainRing), weather
 src/dev/      Dev-only tooling (DevTools autoload: --screenshot, --camera)
 docs/         design.md: design decisions, build stages, starting tuning values
-assets/       Imported art: models/ (.glb), textures/, shaders/, audio/
+assets/       Art: models/ (.glb), textures/, shaders/ (venue skies, floors, peaks), audio/. Credits in CREDITS.md
 art_src/      Blender Python scripts that generate assets (Godot ignores this folder)
 tests/        Headless tests, test_*.gd
 tools/        CLI helpers: godot.sh, run_tests.gd, test_case.gd
@@ -117,7 +124,7 @@ starting tuning values. Read it before gameplay work. Update it when a decision 
 
 - Test files: `tests/**/test_*.gd`, beginning with `extends "res://tools/test_case.gd"`. Each `test_*`
   method runs on a fresh instance and may `await`. Optional hooks: `before_each` and `after_each`.
-- Helpers: `assert_true/false/eq/almost_eq/not_null`, `fail()`, `add_to_tree(node)` (freed after the
+- Helpers: `assert_true/false/eq/almost_eq/null/not_null`, `fail()`, `add_to_tree(node)` (freed after the
   test), `await wait_physics_ticks(n)`.
 - Any engine or script error logged during a test fails it, including `push_error` and null calls.
 - The headless window is only 64×64 px. Tests that project points onto the screen should put their

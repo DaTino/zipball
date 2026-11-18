@@ -18,7 +18,7 @@ func test_center_and_goal_cells_are_open_space() -> void:
 	assert_almost_eq(lattice.cell_center(Vector3i(1, 1, 1)), Vector3(-18, -18, -18))
 	assert_almost_eq(lattice.cell_center(Vector3i(7, 7, 7)), Vector3(18, 18, 18))
 	# A cell center is 3 m from each of its four nearest pipes on every axis: 3 * sqrt(2).
-	assert_almost_eq(lattice.distance_to_nearest_pipe(Vector3.ZERO), 3.0 * sqrt(2.0), 0.001)
+	assert_almost_eq(lattice.distance_to_nearest_zip_point(Vector3.ZERO), 3.0 * sqrt(2.0), 0.001)
 
 
 func test_pipe_axes_and_positions() -> void:
@@ -37,7 +37,7 @@ func test_ray_attaches_to_pipe_center_line() -> void:
 	if hit == null:
 		return
 	assert_almost_eq(hit.anchor, target, 0.01)
-	assert_eq(lattice.pipe_axis(hit.pipe_index), 2)
+	assert_eq(lattice.pipe_axis(hit.index), 2)
 	assert_almost_eq(hit.distance, target.length() - 0.2, 0.01)
 
 
@@ -88,3 +88,45 @@ func test_outside_distance_and_clamp() -> void:
 	assert_almost_eq(lattice.distance_outside(Vector3(0, 0, 30)), 3.0)
 	assert_almost_eq(lattice.distance_outside(Vector3(10, -10, 5)), 0.0)
 	assert_almost_eq(lattice.clamp_inside(Vector3(40, 0, -30)), Vector3(27, 0, -27))
+
+
+# Orbs: 4 per side, 10 m apart, radius 1. Lines at -15, -5, 5 and 15, so the center cell's
+# corners are the eight orbs at (+-5, +-5, +-5).
+var orbs := Lattice.new(4, 10.0, 1.0, Lattice.ZipPoints.ORBS)
+
+
+func test_orbs_sit_where_beams_would_cross() -> void:
+	assert_eq(orbs.orb_count(), 64)
+	assert_almost_eq(orbs.orb_center(0), Vector3(-15, -15, -15))
+	assert_almost_eq(orbs.orb_center(1), Vector3(-15, -15, -5))
+	assert_almost_eq(orbs.orb_center(63), Vector3(15, 15, 15))
+	assert_almost_eq(orbs.distance_to_nearest_zip_point(Vector3.ZERO), sqrt(75.0), 0.001)
+	assert_almost_eq(orbs.distance_to_nearest_zip_point(Vector3(4, 5, 5)), 1.0, 0.001)
+
+
+func test_ray_hits_an_orb_and_anchors_at_its_center() -> void:
+	var target := Vector3(5, 5, 5)
+	var hit := orbs.raycast(Vector3.ZERO, target, 35.0, ASSIST)
+	assert_not_null(hit, "should hit the orb at (5, 5, 5)")
+	if hit == null:
+		return
+	assert_almost_eq(hit.anchor, target, 0.001)
+	assert_almost_eq(hit.distance, target.length() - 1.0, 0.01)
+	assert_false(hit.assisted)
+
+
+func test_near_miss_on_an_orb_is_caught_by_aim_assist() -> void:
+	# The orb's edge is asin(1 / 8.66) = 6.6 degrees off its center; aim 8 degrees off.
+	var aim := Vector3.ONE.normalized().rotated(Vector3(1, -1, 0).normalized(), deg_to_rad(8.0))
+	assert_eq(orbs.raycast(Vector3.ZERO, aim, 35.0, 0.0), null, "no direct hit")
+	var hit := orbs.raycast(Vector3.ZERO, aim, 35.0, ASSIST)
+	assert_not_null(hit, "aim assist should catch it")
+	if hit == null:
+		return
+	assert_true(hit.assisted)
+	assert_almost_eq(hit.anchor, Vector3(5, 5, 5), 0.001)
+
+
+func test_orb_rays_respect_range_and_open_corridors() -> void:
+	assert_eq(orbs.raycast(Vector3.ZERO, Vector3.ONE, 5.0, ASSIST), null, "out of range")
+	assert_eq(orbs.raycast(Vector3.ZERO, Vector3.RIGHT, 35.0, ASSIST), null, "nothing straight along X")

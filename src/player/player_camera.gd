@@ -10,7 +10,7 @@ var source: InputSource
 func _ready() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	near = 0.05
-	far = 2000.0
+	far = 4000.0
 	fov = 80.0
 
 

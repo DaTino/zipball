@@ -54,6 +54,11 @@ func assert_not_null(value: Variant, message := "expected a value, got null") ->
 		fail(message)
 
 
+func assert_null(value: Variant, message := "") -> void:
+	if value != null:
+		fail(message if message != "" else "expected null, got %s" % [value])
+
+
 func assert_eq(actual: Variant, expected: Variant, message := "") -> void:
 	if actual != expected:
 		fail("%sexpected %s, got %s" % [_prefix(message), var_to_str(expected), var_to_str(actual)])

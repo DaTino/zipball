@@ -5,16 +5,22 @@ extends Node3D
 ## gives local players a camera and HUD.
 
 const PLAYER_SCENE := preload("res://src/player/player.tscn")
+## Loaded by path when needed, not preloaded: the menu preloads this scene.
+const MENU_SCENE_PATH := "res://src/ui/main_menu.tscn"
 ## Render layer for player i's body is FIRST_BODY_LAYER + i, so their own camera can hide it.
 const FIRST_BODY_LAYER := 11
 
 ## Off in tests, which add scripted players themselves.
 @export var auto_add_local_player := true
+## The menu's choices. Set before the match enters the tree; the defaults if left empty.
+@export var settings: MatchSettings
 
 var players: Array[Player] = []
 var sources: Array[InputSource] = []
 ## Testing switch for downward gravity, shared by everyone in the match.
 var gravity_enabled := true
+## The venue's sky, light, floor and weather (presentation only).
+var scenery: Scenery
 ## Each player's input from the previous tick, for spotting button presses.
 var _last_inputs: Array[PlayerInput] = []
 
@@ -23,6 +29,14 @@ var _last_inputs: Array[PlayerInput] = []
 
 
 func _ready() -> void:
+	if settings == null:
+		settings = MatchSettings.new()
+	scenery = settings.make_scenery()
+	add_child(scenery)
+	move_child(scenery, 0)
+	arena.apply_settings(settings, scenery)
+	ball.radius = settings.ball_radius()
+	gravity_enabled = settings.gravity
 	ball.arena = arena
 	ball.gravity_enabled = gravity_enabled
 	ball.reset_to(faceoff_position())
@@ -60,9 +74,13 @@ func set_gravity_enabled(enabled: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key != null and key.pressed and not key.echo and key.keycode == KEY_F11:
+	if key == null or not key.pressed or key.echo:
+		return
+	if key.keycode == KEY_F11:
 		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
+	elif key.physical_keycode == KEY_M:
+		get_tree().change_scene_to_file.call_deferred(MENU_SCENE_PATH)
 
 
 ## Adds a player driven by `source`. With `local_view`, they also get a camera and HUD.
@@ -72,7 +90,9 @@ func add_player(source: InputSource, team: int, local_view := false) -> Player:
 	var player := PLAYER_SCENE.instantiate() as Player
 	player.team = team
 	player.arena = arena
+	player.ball = ball
 	player.gravity_enabled = gravity_enabled
+	player.auto_reel = settings.grapple_mode == MatchSettings.GrappleMode.REEL
 	add_child(player)
 	players.append(player)
 	sources.append(source)

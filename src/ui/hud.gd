@@ -4,7 +4,11 @@ extends CanvasLayer
 ## toward the ball and goals, a debug readout and a controls reminder. Reads the
 ## simulation, never changes it.
 
-const CONTROLS_HINT := "Mouse / right stick: aim    WASD / left stick: steer    RMB / R1 (hold): charge a throw, let go to throw\nLMB / L1 (hold): grapple pulls you in, then you hang. Let go to fly    E / R2: let line out and swing    Q / L2: reel in\nR / Start: respawn (returns the ball to the center)    G / Back: gravity on/off    Esc: free mouse    F11: fullscreen"
+const CONTROLS_FIRST := "Mouse / right stick: aim    WASD / left stick: steer    RMB / R1 (hold): charge a throw, let go to throw\n"
+## The grapple line, for Reel mode and for Swing mode.
+const CONTROLS_REEL := "LMB / L1 (hold): grapple pulls you in, then you hang; aim at the ball to reel it in. Let go to fly    E / R2: let line out    Q / L2: reel in\n"
+const CONTROLS_SWING := "LMB / L1 (hold): grapple, then swing on the line; aim at the ball to reel it in. Let go to fly    Q / L2: reel in    E / R2: let out\n"
+const CONTROLS_LAST := "R / Start: respawn (returns the ball to the center)    G / Back: gravity on/off    M: menu    Esc: free mouse    F11: fullscreen"
 
 var player: Player
 var source: InputSource
@@ -63,7 +67,8 @@ func _ready() -> void:
 	_hint.anchor_bottom = 1.0
 	_hint.offset_left = 16
 	_hint.offset_top = -80
-	_hint.text = CONTROLS_HINT
+	var grapple_line := CONTROLS_REEL if player == null or player.auto_reel else CONTROLS_SWING
+	_hint.text = CONTROLS_FIRST + grapple_line + CONTROLS_LAST
 	add_child(_hint)
 	_arrows.reserved_bottom = -_hint.offset_top
 
@@ -92,6 +97,8 @@ func _process(_delta: float) -> void:
 			line = "hanging"
 		Player.GrappleState.ROPE:
 			line = "rope, %.1f m" % player.rope_length
+		Player.GrappleState.REELING_BALL:
+			line = "reeling in the ball"
 	var ball_state := "-"
 	if ball != null:
 		ball_state = "loose" if ball.carrier == null else ("YOURS" if ball.carrier == player else "taken")

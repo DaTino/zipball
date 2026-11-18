@@ -73,6 +73,9 @@ func _process(_delta: float) -> void:
 	if player.grapple_state != Player.GrappleState.OFF:
 		var hand := eye + view * HAND_OFFSET
 		var hook := arena_transform * player.grapple_anchor_local
+		if player.grapple_on_ball:
+			var ball_center := player.ball.get_global_transform_interpolated().origin
+			hook = ball_center + (hand - ball_center).normalized() * player.ball.radius
 		if player.grapple_state == Player.GrappleState.FLYING:
 			hook = hand + (hook - hand).normalized() * _shown_hook_travel()
 		_rope.visible = true

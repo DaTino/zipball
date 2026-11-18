@@ -69,7 +69,7 @@ func _sideways_speed() -> float:
 
 func test_spawns_in_open_space_facing_center() -> void:
 	assert_almost_eq(player.global_position, spawn, 0.001)
-	assert_true(match_node.arena.lattice.distance_to_nearest_pipe(spawn) > 1.0, "spawn should be clear of pipes")
+	assert_true(match_node.arena.lattice.distance_to_nearest_zip_point(spawn) > 1.0, "spawn should be clear of pipes")
 	assert_almost_eq(player.aim_direction(), Vector3.ONE.normalized(), 0.001)
 
 
@@ -188,7 +188,7 @@ func test_pull_stops_and_hangs_at_the_pipe() -> void:
 	var ticks: int = await _ticks_until(_is_hanging, 180)
 	assert_true(ticks >= 0, "should reach the pipe and hang")
 	assert_almost_eq(player.global_position.distance_to(player.grapple_anchor_world()),
-			player.tuning.hang_distance, 0.15, "hang distance")
+			player.hang_distance(), 0.15, "hang distance")
 	await wait_physics_ticks(2) # Settle onto the exact hang point.
 	var hang_point := player.global_position
 	await wait_physics_ticks(60)
@@ -256,7 +256,7 @@ func test_letting_the_line_out_from_a_hang_lowers_you() -> void:
 	source.next_input.reel = -1.0
 	await wait_physics_ticks(30)
 	assert_eq(player.grapple_state, Player.GrappleState.ROPE)
-	assert_true(player.rope_length > player.tuning.hang_distance + 3.0, "line should grow, at %.2f m" % player.rope_length)
+	assert_true(player.rope_length > player.hang_distance() + 3.0, "line should grow, at %.2f m" % player.rope_length)
 
 
 func _press_toggle_gravity() -> void:
@@ -292,3 +292,47 @@ func test_pull_back_still_works_without_gravity() -> void:
 	await wait_physics_ticks(30)
 	assert_true(player.velocity.z < -1.0, "should head back toward the cube, got %s" % player.velocity)
 	assert_almost_eq(player.velocity.y, 0.0, 0.001)
+
+
+func test_swing_mode_lands_as_a_plain_rope() -> void:
+	player.auto_reel = false
+	var start_distance := spawn.distance_to(near_pipe)
+	await _attach_to_near_pipe()
+	assert_eq(player.grapple_state, Player.GrappleState.ROPE)
+	assert_almost_eq(player.rope_length, player.global_position.distance_to(near_pipe), 0.5,
+			"the rope is as long as the shot")
+	await wait_physics_ticks(60)
+	assert_eq(player.grapple_state, Player.GrappleState.ROPE, "still swinging, not pulled in")
+	assert_true(player.global_position.distance_to(near_pipe) > start_distance - 3.0,
+			"shouldn't be reeled in toward the beam")
+
+
+## Rebuilds this test's arena with orbs. The player stays where they are.
+func _use_orbs(size: MatchSettings.Size) -> void:
+	var settings := MatchSettings.new()
+	settings.zip_points = Lattice.ZipPoints.ORBS
+	settings.zip_size = size
+	match_node.arena.apply_settings(settings)
+
+
+func test_pull_hangs_off_an_orb_outside_its_skin() -> void:
+	_use_orbs(MatchSettings.Size.MEDIUM)
+	var orb := spawn + Vector3.ONE * match_node.arena.spacing * 0.5 # A corner of the spawn cell.
+	_aim_at(orb)
+	source.next_input.grapple_held = true
+	var ticks: int = await _ticks_until(_is_hanging, 240)
+	assert_true(ticks >= 0, "should reach the orb and hang")
+	assert_almost_eq(player.grapple_anchor_world(), orb, 0.01, "anchored at the orb's center")
+	assert_almost_eq(player.global_position.distance_to(orb), 2.0 + player.tuning.hang_gap, 0.15,
+			"hangs the gap away from a 2 m orb's skin")
+
+
+func test_orbs_never_bump_you() -> void:
+	_use_orbs(MatchSettings.Size.LARGE)
+	match_node.set_gravity_enabled(false)
+	var orb := spawn + Vector3.ONE * match_node.arena.spacing * 0.5
+	player.place(orb + Vector3(0, 0, 8), 0.0, 0.0)
+	player.velocity = Vector3(0, 0, -20)
+	await wait_physics_ticks(60)
+	assert_true(player.global_position.z < orb.z - 8.0, "should fly straight through, at %s" % player.global_position)
+	assert_almost_eq(Vector2(player.global_position.x, player.global_position.y), Vector2(orb.x, orb.y), 0.01)

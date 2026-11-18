@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/main_menu.gd" id="1_menu"]
+[ext_resource type="PackedScene" path="res://src/arena/arena.tscn" id="2_arena"]
+[ext_resource type="PackedScene" path="res://src/ball/ball.tscn" id="3_ball"]
+
+[node name="MainMenu" type="Node3D"]
+script = ExtResource("1_menu")
+
+[node name="Arena" parent="." instance=ExtResource("2_arena")]
+unique_name_in_owner = true
+
+[node name="Ball" parent="." instance=ExtResource("3_ball")]
+unique_name_in_owner = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+unique_name_in_owner = true
+physics_interpolation_mode = 2
+fov = 55.0
+far = 4000.0

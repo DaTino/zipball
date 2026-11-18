@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Zipball"
 config/description="Grappling-hook arena sports game (working title)."
-run/main_scene="res://src/match/match.tscn"
+run/main_scene="res://src/ui/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]

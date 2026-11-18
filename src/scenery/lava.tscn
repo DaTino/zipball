@@ -1,0 +1,81 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/scenery/scenery.gd" id="1_scenery"]
+[ext_resource type="Shader" path="res://assets/shaders/lava_floor.gdshader" id="2_floor"]
+[ext_resource type="Shader" path="res://assets/shaders/mountain.gdshader" id="3_mountain"]
+[ext_resource type="Script" path="res://src/scenery/mountain_ring.gd" id="4_ring"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_lava"]
+sky_top_color = Color(0.12, 0.03, 0.04, 1)
+sky_horizon_color = Color(0.75, 0.25, 0.08, 1)
+sky_curve = 0.12
+ground_bottom_color = Color(0.3, 0.07, 0.02, 1)
+ground_horizon_color = Color(0.75, 0.25, 0.08, 1)
+
+[sub_resource type="Sky" id="Sky_lava"]
+sky_material = SubResource("ProceduralSkyMaterial_lava")
+
+[sub_resource type="Environment" id="Environment_lava"]
+background_mode = 2
+sky = SubResource("Sky_lava")
+ambient_light_source = 2
+ambient_light_color = Color(0.9, 0.5, 0.35, 1)
+ambient_light_energy = 0.6
+fog_enabled = true
+fog_light_color = Color(0.42, 0.14, 0.07, 1)
+fog_density = 0.003
+fog_sky_affect = 0.0
+glow_enabled = true
+glow_intensity = 0.8
+glow_bloom = 0.08
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_floor"]
+render_priority = 0
+shader = ExtResource("2_floor")
+shader_parameter/haze_color = Color(0.6, 0.2, 0.07, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(9000, 9000)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_volcano"]
+render_priority = 0
+shader = ExtResource("3_mountain")
+shader_parameter/rock_color = Color(0.16, 0.11, 0.1, 1)
+shader_parameter/peak_color = Color(1, 0.38, 0.06, 1)
+shader_parameter/peak_line = 0.86
+shader_parameter/peak_glow = 1.2
+shader_parameter/ambient = 0.55
+shader_parameter/haze_color = Color(0.6, 0.2, 0.07, 1)
+shader_parameter/haze_density = 0.0005
+
+[node name="Lava" type="Node3D"]
+script = ExtResource("1_scenery")
+zip_color = Color(0.28, 0.33, 0.41, 1)
+zip_glow = Color(0.11, 0.13, 0.16, 1)
+weather = 2
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_lava")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-20, 120, 0)
+light_color = Color(1, 0.55, 0.32, 1)
+light_energy = 0.9
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -420, 0)
+material_override = SubResource("ShaderMaterial_floor")
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_floor")
+
+[node name="Volcanoes" type="MultiMeshInstance3D" parent="."]
+material_override = SubResource("ShaderMaterial_volcano")
+cast_shadow = 0
+script = ExtResource("4_ring")
+count = 14
+min_height = 380.0
+max_height = 780.0
+min_width = 280.0
+max_width = 480.0
+top_fraction = 0.16
+seed_value = 7

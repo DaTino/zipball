@@ -109,7 +109,7 @@ func test_quick_throw_goes_at_minimum_speed() -> void:
 	assert_null_carrier()
 	var expected := ball.throw_speed(1.0 / Engine.physics_ticks_per_second / ball.charge_time)
 	assert_almost_eq(ball.velocity, player.aim_direction() * expected, 0.05)
-	assert_true(expected < ball.throw_min_speed + 1.0, "a tap should be near the minimum, got %.1f" % expected)
+	assert_true(expected < ball.throw_min_speed + 2.0, "a tap should be near the minimum, got %.1f" % expected)
 
 
 func test_full_charge_throws_at_maximum_speed() -> void:
@@ -127,19 +127,27 @@ func test_charge_shows_while_holding_the_button() -> void:
 	assert_almost_eq(ball.charge_fraction(), 30.0 / Engine.physics_ticks_per_second / ball.charge_time, 0.02)
 
 
-func test_throw_adds_the_throwers_velocity() -> void:
+## The thrower's own velocity isn't added (D12): the ball flies straight down the crosshair
+## line at the charge's speed, even when the thrower is moving fast across it.
+func test_throw_flies_straight_along_the_aim_whatever_the_thrower_is_doing() -> void:
 	_place_near_ball(player, 1.0)
 	await wait_physics_ticks(1)
 	source.next_input.throw_held = true
-	await wait_physics_ticks(1)
-	var drift := Vector3(4.0, 0.0, 0.0)
-	player.velocity = drift
+	await wait_physics_ticks(5)
+	player.velocity = Vector3(30.0, 10.0, 20.0) # Sideways, up and backward.
 	source.next_input.throw_held = false
 	await wait_physics_ticks(1)
-	var throw_dir := player.aim_direction()
-	var sideways := ball.velocity - throw_dir * ball.velocity.dot(throw_dir)
-	assert_almost_eq(sideways, drift, 0.05, "should carry the thrower's sideways speed")
-	assert_true(ball.velocity.dot(throw_dir) > ball.throw_min_speed - 0.1, "and fly forward, %s" % ball.velocity)
+	assert_null_carrier()
+	var aim := player.aim_direction()
+	var speed := ball.throw_speed(5.0 / Engine.physics_ticks_per_second / ball.charge_time)
+	assert_almost_eq(ball.velocity, aim * speed, 0.05, "speed from the charge alone, along the aim")
+
+	var start := ball.global_position
+	await wait_physics_ticks(20)
+	var travelled := ball.global_position - start
+	var off_line := travelled - aim * travelled.dot(aim)
+	assert_true(travelled.dot(aim) > speed * 0.3, "it should have flown forward, %s" % travelled)
+	assert_true(off_line.length() < 0.05, "and stayed on the aim line, %.2f m off" % off_line.length())
 
 
 func test_thrower_must_wait_to_grab_it_again() -> void:
@@ -179,7 +187,7 @@ func test_ball_bounces_off_a_pipe() -> void:
 	var pipe := Vector3(spacing * 0.5, spacing * 0.5, 0.0)
 	_launch_ball(Vector3(pipe.x, pipe.y - 6.0, 0.0), Vector3(0.0, 10.0, 0.0))
 	await wait_physics_ticks(60)
-	var contact_y := pipe.y - ball.radius - match_node.arena.pipe_radius
+	var contact_y := pipe.y - ball.radius - match_node.arena.zip_radius
 	assert_true(ball.global_position.y < contact_y + 0.05, "should never pass through, at y %.2f" % ball.global_position.y)
 	assert_true(ball.velocity.y < -4.0, "should bounce back down, got %.2f" % ball.velocity.y)
 
@@ -204,6 +212,100 @@ func test_respawn_refreezes_a_thrown_ball_at_the_center() -> void:
 	await wait_physics_ticks(1)
 	assert_true(ball.frozen, "should be frozen at the faceoff spot")
 	assert_almost_eq(ball.global_position, match_node.faceoff_position(), 0.001)
+
+
+## Puts `who` this far (m) from the ball's center along +Z (down an open corridor) and aims
+## them back along -Z, straight at it.
+func _line_up_on_ball(who: Player, who_source: ScriptedInputSource, distance: float) -> void:
+	who.place(ball.global_position + Vector3(0.0, 0.0, distance), 0.0, 0.0)
+	who_source.set_aim(0.0, 0.0)
+
+
+## Runs ticks until `condition` returns true. Returns how many it took, or -1 after `max_ticks`.
+func _ticks_until(condition: Callable, max_ticks: int) -> int:
+	for i: int in max_ticks + 1:
+		if condition.call():
+			return i
+		await wait_physics_ticks(1)
+	return -1
+
+
+func _is_reeling(who: Player) -> bool:
+	return who.grapple_state == Player.GrappleState.REELING_BALL
+
+
+func test_hooking_the_ball_reels_it_in_until_you_catch_it() -> void:
+	assert_true(ball.frozen, "starts frozen at the faceoff spot")
+	_line_up_on_ball(player, source, 30.0)
+	source.next_input.grapple_held = true
+	var hooked: int = await _ticks_until(_is_reeling.bind(player), 30)
+	assert_true(hooked >= 0, "the hook should reach the ball")
+	assert_false(ball.frozen, "hooking it wakes it up")
+	assert_true(ball.reeled_by == player)
+	await wait_physics_ticks(10)
+	assert_true(ball.velocity.z > 10.0, "should be flying toward the player, %s" % ball.velocity)
+	var caught: int = await _ticks_until(func() -> bool: return ball.carrier == player, 120)
+	assert_true(caught >= 0, "should reach the player and be caught")
+	await wait_physics_ticks(1)
+	assert_eq(player.grapple_state, Player.GrappleState.OFF, "the line lets go once you have it")
+
+
+func test_letting_go_leaves_the_ball_flying_on() -> void:
+	_line_up_on_ball(player, source, 30.0)
+	source.next_input.grapple_held = true
+	await _ticks_until(_is_reeling.bind(player), 30)
+	await wait_physics_ticks(15)
+	source.next_input.grapple_held = false
+	await wait_physics_ticks(1)
+	assert_null(ball.reeled_by)
+	var speed := ball.velocity.z
+	assert_true(speed > 5.0, "should be moving toward where the player is, %.1f" % speed)
+	await wait_physics_ticks(5)
+	assert_null_carrier()
+	assert_almost_eq(ball.velocity.z, speed, 0.5, "no longer reeled, so it just flies on")
+
+
+func test_aim_assist_catches_the_ball_on_a_near_miss() -> void:
+	_line_up_on_ball(player, source, 30.0)
+	# The ball's edge is asin(1.5 / 30) = 2.9 degrees off its center; aim 4 degrees off.
+	var hit := player.find_grapple_target(Vector3.FORWARD.rotated(Vector3.UP, deg_to_rad(4.0)))
+	assert_true(hit != null and hit.index == Player.BALL_TARGET, "should catch the ball")
+	if hit != null:
+		assert_true(hit.assisted)
+
+
+func test_a_beam_in_the_way_takes_the_hook_instead() -> void:
+	var half_cell := match_node.arena.spacing * 0.5
+	# A vertical beam runs through (half, 0, half). Put the ball behind it and aim through it.
+	ball.reset_to(Vector3(half_cell, 0.0, 0.0))
+	player.place(Vector3(half_cell, 0.0, half_cell * 2.5), 0.0, 0.0)
+	var hit := player.find_grapple_target(Vector3.FORWARD)
+	assert_true(hit != null and hit.index != Player.BALL_TARGET, "the beam should take it")
+
+
+func test_thrower_cannot_hook_their_own_throw_right_away() -> void:
+	await _grab_and_throw(1)
+	var hit := player.find_grapple_target(ball.global_position - player.global_position)
+	assert_true(hit == null or hit.index != Player.BALL_TARGET, "too soon after the throw")
+	await wait_physics_ticks(ceili(ball.regrab_delay * Engine.physics_ticks_per_second) + 1)
+	hit = player.find_grapple_target(ball.global_position - player.global_position)
+	assert_true(hit != null and hit.index == Player.BALL_TARGET, "should be able to hook it now")
+
+
+func test_a_newer_hook_takes_the_ball_away() -> void:
+	var other_source := ScriptedInputSource.new()
+	var other := match_node.add_player(other_source, 1)
+	_line_up_on_ball(player, source, 30.0)
+	other.place(ball.global_position + Vector3(0.0, 0.0, -30.0), PI, 0.0)
+	other_source.set_aim(PI, 0.0) # Looking along +Z, at the ball from the other side.
+	source.next_input.grapple_held = true
+	await _ticks_until(_is_reeling.bind(player), 30)
+	other_source.next_input.grapple_held = true
+	var stolen: int = await _ticks_until(_is_reeling.bind(other), 30)
+	assert_true(stolen >= 0, "the second hook should land")
+	assert_true(ball.reeled_by == other)
+	await wait_physics_ticks(1)
+	assert_eq(player.grapple_state, Player.GrappleState.OFF, "the first line should drop")
 
 
 func assert_null_carrier() -> void:

@@ -37,6 +37,9 @@ var _errors := ErrorCollector.new()
 
 func _initialize() -> void:
 	OS.add_logger(_errors)
+	# One physics tick per frame at most. Otherwise a slow frame (building an arena, say)
+	# makes the engine run catch-up ticks, and wait_physics_ticks(1) can span several.
+	Engine.max_physics_steps_per_frame = 1
 	_run_all.call_deferred()
 
 
