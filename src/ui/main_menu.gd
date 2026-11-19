@@ -22,8 +22,13 @@ const START_COLOR := Color(1.0, 0.5, 0.1)
 
 var settings: MatchSettings
 var start_button: Button
+## The Match row's numbers: a timed match's minutes, and a points match's target.
+var minutes_box: NumberStepper
+var points_box: NumberStepper
 ## The venue shown behind the menu: swapped whenever the Environment choice changes.
 var scenery: Scenery
+
+var _minutes_unit: Label
 
 @onready var _arena: Arena = %Arena
 @onready var _ball: Ball = %Ball
@@ -89,7 +94,7 @@ func _build_ui() -> void:
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	screen.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 12)
+	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
 
 	var title := Label.new()
@@ -101,7 +106,7 @@ func _build_ui() -> void:
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 20)
-	grid.add_theme_constant_override("v_separation", 9)
+	grid.add_theme_constant_override("v_separation", 6)
 	column.add_child(grid)
 
 	var grid_names: Array[String] = []
@@ -123,6 +128,7 @@ func _build_ui() -> void:
 			func(i: int) -> void: settings.grapple_mode = i as MatchSettings.GrappleMode)
 	_add_choice(grid, "Environment", ["Classic", "Space", "Snow", "Lava", "Desert"], settings.venue,
 			func(i: int) -> void: settings.venue = i as MatchSettings.Venue)
+	_add_match_rule(grid)
 
 	start_button = Button.new()
 	start_button.name = "StartGame"
@@ -166,6 +172,68 @@ func _add_choice(grid: GridContainer, title: String, choices: Array[String], sel
 		row.add_child(button)
 
 
+## How the match is won (D15): a radio button for a timed match and one for a points match,
+## each followed by its number (minutes or points) in a NumberStepper. Only the chosen rule's
+## number can be changed. Named like the other choices ("MatchTime", "MatchPoints",
+## "MatchMinutes", "MatchPointsToWin"), so tests can find them.
+func _add_match_rule(grid: GridContainer) -> void:
+	var label := Label.new()
+	label.text = "Match"
+	grid.add_child(label)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	grid.add_child(row)
+	var group := ButtonGroup.new()
+	_add_rule_radio(row, group, "Time", MatchSettings.MatchRule.TIMED)
+	minutes_box = _add_number(row, "MatchMinutes", settings.time_limit_minutes,
+			MatchSettings.MIN_MINUTES, MatchSettings.MAX_MINUTES,
+			func(value: int) -> void: settings.time_limit_minutes = value)
+	_minutes_unit = Label.new()
+	_minutes_unit.text = "min"
+	row.add_child(_minutes_unit)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(8, 0)
+	row.add_child(gap)
+	_add_rule_radio(row, group, "Points", MatchSettings.MatchRule.POINTS)
+	points_box = _add_number(row, "MatchPointsToWin", settings.points_to_win,
+			MatchSettings.MIN_POINTS, MatchSettings.MAX_POINTS,
+			func(value: int) -> void: settings.points_to_win = value)
+	_refresh_match_rule()
+
+
+func _add_rule_radio(row: HBoxContainer, group: ButtonGroup, title: String,
+		rule: MatchSettings.MatchRule) -> void:
+	var radio := CheckBox.new()
+	radio.name = "Match" + title
+	radio.text = title
+	radio.button_group = group
+	radio.button_pressed = settings.match_rule == rule
+	radio.custom_minimum_size = Vector2(0, 38)
+	radio.pressed.connect(func() -> void:
+		settings.match_rule = rule
+		_refresh_match_rule())
+	row.add_child(radio)
+
+
+func _add_number(row: HBoxContainer, node_name: String, value: int, low: int, high: int,
+		on_change: Callable) -> NumberStepper:
+	var number := NumberStepper.new()
+	number.name = node_name
+	number.setup(low, high, value)
+	number.value_changed.connect(on_change)
+	row.add_child(number)
+	return number
+
+
+## Only the chosen rule's number can be changed; the other one is dimmed.
+func _refresh_match_rule() -> void:
+	var timed := settings.match_rule == MatchSettings.MatchRule.TIMED
+	minutes_box.editable = timed
+	points_box.editable = not timed
+	_minutes_unit.modulate.a = 1.0 if timed else 0.35
+
+
 ## Bright, chunky, Dreamcast-era: a dark blue panel, ball-yellow for the lit choice, and an
 ## orange Start button.
 func _make_theme() -> Theme:
@@ -187,16 +255,27 @@ func _make_theme() -> Theme:
 	theme.set_font_size("font_size", "Hint", 16)
 	theme.set_color("font_color", "Hint", Color(LABEL_COLOR, 0.7))
 
-	theme.set_stylebox("normal", "Button", _box(Color(1, 1, 1, 0.1), Color(1, 1, 1, 0.22)))
-	theme.set_stylebox("hover", "Button", _box(Color(1, 1, 1, 0.22), Color(1, 1, 1, 0.5)))
-	theme.set_stylebox("pressed", "Button", _box(Ball.COLOR, Ball.COLOR.lightened(0.4)))
-	theme.set_stylebox("hover_pressed", "Button", _box(Ball.COLOR.lightened(0.2), Color.WHITE))
+	theme.set_stylebox("normal", "Button", _choice_box(Color(1, 1, 1, 0.1), Color(1, 1, 1, 0.22)))
+	theme.set_stylebox("hover", "Button", _choice_box(Color(1, 1, 1, 0.22), Color(1, 1, 1, 0.5)))
+	theme.set_stylebox("pressed", "Button", _choice_box(Ball.COLOR, Ball.COLOR.lightened(0.4)))
+	theme.set_stylebox("hover_pressed", "Button", _choice_box(Ball.COLOR.lightened(0.2), Color.WHITE))
 	theme.set_stylebox("focus", "Button", _focus_box())
 	theme.set_color("font_color", "Button", Color.WHITE)
 	theme.set_color("font_hover_color", "Button", Color.WHITE)
 	theme.set_color("font_focus_color", "Button", Color.WHITE)
 	theme.set_color("font_pressed_color", "Button", DARK_TEXT)
 	theme.set_color("font_hover_pressed_color", "Button", DARK_TEXT)
+
+	# The Match row's - and + buttons and numbers: dimmed while their rule isn't chosen.
+	theme.set_stylebox("disabled", "Button", _choice_box(Color(1, 1, 1, 0.03), Color(1, 1, 1, 0.08)))
+	theme.set_color("font_disabled_color", "Button", Color(LABEL_COLOR, 0.3))
+	theme.set_stylebox("normal", "LineEdit", _choice_box(Color(1, 1, 1, 0.1), Color(1, 1, 1, 0.22)))
+	theme.set_stylebox("focus", "LineEdit", _focus_box())
+	theme.set_stylebox("read_only", "LineEdit", _choice_box(Color(1, 1, 1, 0.03), Color(1, 1, 1, 0.08)))
+	theme.set_color("font_color", "LineEdit", Color.WHITE)
+	theme.set_color("font_uneditable_color", "LineEdit", Color(LABEL_COLOR, 0.35))
+	theme.set_color("caret_color", "LineEdit", Ball.COLOR)
+	theme.set_color("selection_color", "LineEdit", Color(Ball.COLOR, 0.35))
 
 	theme.set_type_variation(&"StartButton", &"Button")
 	theme.set_font_size("font_size", "StartButton", 28)
@@ -227,4 +306,13 @@ func _focus_box() -> StyleBoxFlat:
 	var box := _box(Color(0, 0, 0, 0), Color.WHITE, 10, 8, 3)
 	box.draw_center = false
 	box.set_expand_margin_all(3)
+	return box
+
+
+## A choice button or number field: a little less padding above and below than _box(), so
+## all the rows fit a 720 px tall window.
+func _choice_box(fill: Color, edge: Color) -> StyleBoxFlat:
+	var box := _box(fill, edge)
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
 	return box

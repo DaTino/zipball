@@ -39,6 +39,9 @@ One-off `extends SceneTree` scripts run with `--script` can't create the keyboar
 `LocalInputSource` uses the `DevTools` autoload, which isn't a known name there, so `Match` logs
 compile errors and adds no player. Give them a player with `match.add_player(ScriptedInputSource.new(), 0, true)`.
 Put such scripts in `tmp/` and add a quit timer, so a script error can't leave a window hanging open.
+The same compile failure means enums like `Match.Phase.PLAYING` don't resolve in such a script (a
+comparison with one is never true), so compare `match.phase` with plain numbers (0 countdown,
+1 playing, 2 goal pause, 3 over).
 
 ## Definition of done
 
@@ -52,9 +55,11 @@ Put such scripts in `tmp/` and add a quit timer, so a script error can't leave a
 src/arena/    Zip point geometry, beams or orbs (Lattice), tumbling (ArenaSpin), the Arena node
 src/player/   Player simulation, movement math (Movement), MovementTuning, visuals, camera
 src/input/    PlayerInput and input sources (LocalInputSource, ScriptedInputSource)
-src/match/    Match: runs the tick loop and spawns players. MatchSettings: the menu's choices
+src/match/    Match: runs the tick loop, spawns players, and the rules (goals, faceoff countdown, clock).
+              MatchSettings: the menu's choices. Teams: colors and names
 src/ball/     Ball: frozen at the faceoff spot until grabbed or hooked, carried, thrown, flies and bounces
-src/ui/       MainMenu (main_menu.tscn is the main scene), HUD, TargetArrows (edge arrows to the ball and goals)
+src/ui/       MainMenu (main_menu.tscn is the main scene), HUD (score, clock, banners), TargetArrows (edge
+              arrows to the ball and goals), NumberStepper (the menu's - / + numbers)
 src/scenery/  Venues (Scenery): one scene per environment with sky, sun, fog, floor, peaks (MountainRing), weather
 src/dev/      Dev-only tooling (DevTools autoload: --screenshot, --camera)
 docs/         design.md: design decisions, build stages, starting tuning values
@@ -133,6 +138,10 @@ starting tuning values. Read it before gameplay work. Update it when a decision 
   rather than hardcoding them, so tests survive layout changes.
 - The simulation should be testable without rendering: feed scripted inputs for N ticks, then assert
   on the resulting state.
+- A match opens with a 3 s faceoff countdown that holds players at their spawns. Tests that need
+  players moving right away set `match_node.opening_countdown = false` before adding it to the tree.
+  Match state (score, clock, phase) is plain variables, so tests can set it directly, such as a
+  short `time_left_ticks`, rather than waiting minutes.
 
 ## Art pipeline
 

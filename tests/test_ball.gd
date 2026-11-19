@@ -12,6 +12,7 @@ var player: Player
 func before_each() -> void:
 	match_node = MATCH_SCENE.instantiate() as Match
 	match_node.auto_add_local_player = false
+	match_node.opening_countdown = false # Start in play.
 	add_to_tree(match_node)
 	match_node.arena.spin_enabled = false
 	match_node.set_gravity_enabled(false) # So placed players stay where they're put.

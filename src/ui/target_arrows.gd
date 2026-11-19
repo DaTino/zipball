@@ -33,6 +33,8 @@ class Placement:
 
 ## Height (px) kept clear at the bottom of the screen, such as for a controls hint.
 var reserved_bottom := 0.0
+## Height (px) kept clear at the top of the screen, such as for the scoreboard.
+var reserved_top := 0.0
 
 var _targets: Array[Target] = []
 ## Labels drawn so far this frame, so later ones can move aside instead of overlapping.
@@ -64,7 +66,7 @@ func _draw() -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		return
-	var screen_rect := Rect2(0.0, 0.0, size.x, maxf(size.y - reserved_bottom, 1.0))
+	var screen_rect := Rect2(0.0, reserved_top, size.x, maxf(size.y - reserved_top - reserved_bottom, 1.0))
 	_label_rects.clear()
 	for target: Target in _targets:
 		if target.shown.is_valid() and not target.shown.call():

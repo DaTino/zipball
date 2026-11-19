@@ -1,7 +1,8 @@
 class_name MatchSettings
 extends Resource
 ## Choices made on the main menu before a match: the arena's grid and zip points, gravity,
-## the ball and goal sizes, how the grapple behaves, and the venue. The defaults are the game
+## the ball and goal sizes, how the grapple behaves, the venue, and how the match is won (time or
+## points). The defaults are the game
 ## as it was before the menu existed. The menu remembers the last choices in user:// (see
 ## save() and load_saved()).
 
@@ -11,6 +12,9 @@ enum Size { SMALL, MEDIUM, LARGE }
 enum GrappleMode { REEL, SWING }
 ## Where the match takes place: the sky, floor, weather and zip point colors (see VENUE_SCENES).
 enum Venue { CLASSIC, SPACE, SNOW, LAVA, DESERT }
+## How a match ends (D15). Timed: after time_limit_minutes of play, or in sudden-death
+## overtime on a tie. Points: when a team reaches points_to_win.
+enum MatchRule { TIMED, POINTS }
 
 ## Beams per side. Always even, so an open cell sits at the center for the faceoff.
 const GRID_SIZES: Array[int] = [4, 6, 8, 10]
@@ -31,6 +35,12 @@ const VENUE_SCENES: Array[String] = [
 	"res://src/scenery/desert.tscn",
 ]
 
+## The range the menu allows for a timed match's length, and for a points match's target.
+const MIN_MINUTES := 1
+const MAX_MINUTES := 30
+const MIN_POINTS := 1
+const MAX_POINTS := 25
+
 const SAVE_PATH := "user://match_settings.cfg"
 const SECTION := "match"
 
@@ -42,6 +52,11 @@ const SECTION := "match"
 @export var goal_size := Size.MEDIUM
 @export var grapple_mode := GrappleMode.REEL
 @export var venue := Venue.CLASSIC
+@export var match_rule := MatchRule.TIMED
+## Length of a timed match (minutes of play; the clock stops between goals).
+@export_range(MIN_MINUTES, MAX_MINUTES) var time_limit_minutes := 5
+## Points a team needs to win a points match.
+@export_range(MIN_POINTS, MAX_POINTS) var points_to_win := 5
 
 
 ## Beam or orb radius (m).
@@ -73,6 +88,9 @@ func save(path := SAVE_PATH) -> Error:
 	config.set_value(SECTION, "goal_size", goal_size)
 	config.set_value(SECTION, "grapple_mode", grapple_mode)
 	config.set_value(SECTION, "venue", venue)
+	config.set_value(SECTION, "match_rule", match_rule)
+	config.set_value(SECTION, "time_limit_minutes", time_limit_minutes)
+	config.set_value(SECTION, "points_to_win", points_to_win)
 	return config.save(path)
 
 
@@ -92,14 +110,24 @@ static func load_saved(path := SAVE_PATH) -> MatchSettings:
 	settings.goal_size = _load_choice(config, "goal_size", settings.goal_size, Size.size()) as Size
 	settings.grapple_mode = _load_choice(config, "grapple_mode", settings.grapple_mode, GrappleMode.size()) as GrappleMode
 	settings.venue = _load_choice(config, "venue", settings.venue, Venue.size()) as Venue
+	settings.match_rule = _load_choice(config, "match_rule", settings.match_rule, MatchRule.size()) as MatchRule
+	settings.time_limit_minutes = _load_int(config, "time_limit_minutes", settings.time_limit_minutes,
+			MIN_MINUTES, MAX_MINUTES)
+	settings.points_to_win = _load_int(config, "points_to_win", settings.points_to_win, MIN_POINTS, MAX_POINTS)
 	var gravity_value: Variant = config.get_value(SECTION, "gravity", settings.gravity)
 	if gravity_value is bool:
 		settings.gravity = gravity_value
 	return settings
 
 
+## An enum value: an int from 0 to `count` - 1.
 static func _load_choice(config: ConfigFile, key: String, fallback: int, count: int) -> int:
+	return _load_int(config, key, fallback, 0, count - 1)
+
+
+## An int from `low` to `high`, or `fallback` if the saved value is missing or isn't one.
+static func _load_int(config: ConfigFile, key: String, fallback: int, low: int, high: int) -> int:
 	var value: Variant = config.get_value(SECTION, key, fallback)
-	if value is int and value >= 0 and value < count:
+	if value is int and value >= low and value <= high:
 		return value
 	return fallback

@@ -19,6 +19,9 @@ func test_defaults_are_the_original_game() -> void:
 	assert_almost_eq(settings.goal_radius(), 6.0)
 	assert_eq(settings.grapple_mode, MatchSettings.GrappleMode.REEL)
 	assert_eq(settings.venue, MatchSettings.Venue.CLASSIC)
+	assert_eq(settings.match_rule, MatchSettings.MatchRule.TIMED, "a timed match")
+	assert_eq(settings.time_limit_minutes, 5)
+	assert_eq(settings.points_to_win, 5)
 
 
 func test_every_venue_has_a_scene() -> void:
@@ -57,6 +60,9 @@ func test_saved_choices_load_back() -> void:
 	settings.goal_size = MatchSettings.Size.LARGE
 	settings.grapple_mode = MatchSettings.GrappleMode.SWING
 	settings.venue = MatchSettings.Venue.SNOW
+	settings.match_rule = MatchSettings.MatchRule.POINTS
+	settings.time_limit_minutes = 12
+	settings.points_to_win = 7
 	assert_eq(settings.save(TEST_PATH), OK)
 	var loaded := MatchSettings.load_saved(TEST_PATH)
 	assert_eq(loaded.pipes_per_side, 6)
@@ -67,6 +73,9 @@ func test_saved_choices_load_back() -> void:
 	assert_eq(loaded.goal_size, MatchSettings.Size.LARGE)
 	assert_eq(loaded.grapple_mode, MatchSettings.GrappleMode.SWING)
 	assert_eq(loaded.venue, MatchSettings.Venue.SNOW)
+	assert_eq(loaded.match_rule, MatchSettings.MatchRule.POINTS)
+	assert_eq(loaded.time_limit_minutes, 12, "the unused rule's number is remembered too")
+	assert_eq(loaded.points_to_win, 7)
 
 
 func test_no_saved_file_gives_the_defaults() -> void:
@@ -85,6 +94,9 @@ func test_bad_saved_values_fall_back_to_the_defaults() -> void:
 	config.set_value(MatchSettings.SECTION, "goal_size", 1.5)
 	config.set_value(MatchSettings.SECTION, "grapple_mode", 2)
 	config.set_value(MatchSettings.SECTION, "venue", MatchSettings.Venue.size())
+	config.set_value(MatchSettings.SECTION, "match_rule", MatchSettings.MatchRule.size())
+	config.set_value(MatchSettings.SECTION, "time_limit_minutes", MatchSettings.MAX_MINUTES + 1)
+	config.set_value(MatchSettings.SECTION, "points_to_win", 0)
 	config.save(TEST_PATH)
 	var loaded := MatchSettings.load_saved(TEST_PATH)
 	assert_eq(loaded.pipes_per_side, 10)
@@ -95,3 +107,26 @@ func test_bad_saved_values_fall_back_to_the_defaults() -> void:
 	assert_eq(loaded.goal_size, MatchSettings.Size.MEDIUM)
 	assert_eq(loaded.grapple_mode, MatchSettings.GrappleMode.REEL)
 	assert_eq(loaded.venue, MatchSettings.Venue.CLASSIC)
+	assert_eq(loaded.match_rule, MatchSettings.MatchRule.TIMED)
+	assert_eq(loaded.time_limit_minutes, 5)
+	assert_eq(loaded.points_to_win, 5)
+
+
+func test_numbers_of_the_wrong_type_fall_back_too() -> void:
+	var config := ConfigFile.new()
+	config.set_value(MatchSettings.SECTION, "time_limit_minutes", 10.0)
+	config.set_value(MatchSettings.SECTION, "points_to_win", "3")
+	config.save(TEST_PATH)
+	var loaded := MatchSettings.load_saved(TEST_PATH)
+	assert_eq(loaded.time_limit_minutes, 5)
+	assert_eq(loaded.points_to_win, 5)
+
+
+func test_the_limits_themselves_are_valid() -> void:
+	var config := ConfigFile.new()
+	config.set_value(MatchSettings.SECTION, "time_limit_minutes", MatchSettings.MAX_MINUTES)
+	config.set_value(MatchSettings.SECTION, "points_to_win", MatchSettings.MIN_POINTS)
+	config.save(TEST_PATH)
+	var loaded := MatchSettings.load_saved(TEST_PATH)
+	assert_eq(loaded.time_limit_minutes, MatchSettings.MAX_MINUTES)
+	assert_eq(loaded.points_to_win, MatchSettings.MIN_POINTS)

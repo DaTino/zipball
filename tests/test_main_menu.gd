@@ -108,6 +108,94 @@ func test_swing_and_venue_carry_into_the_match() -> void:
 	assert_false(player.auto_reel, "Swing mode: the line shouldn't reel you in")
 
 
+func _stepper(stepper_name: String) -> NumberStepper:
+	var stepper := menu.find_child(stepper_name, true, false) as NumberStepper
+	assert_not_null(stepper, "no number named %s" % stepper_name)
+	return stepper
+
+
+## Presses a stepper's - or + button `times` times, the way a player would.
+func _step(stepper: NumberStepper, button_name: String, times := 1) -> void:
+	var button := stepper.get_node(button_name) as Button
+	for i: int in times:
+		if not button.disabled:
+			button.pressed.emit()
+
+
+func test_match_row_starts_on_a_five_minute_match() -> void:
+	assert_true(_button("MatchTime").button_pressed, "Time should be chosen")
+	assert_false(_button("MatchPoints").button_pressed)
+	var minutes := _stepper("MatchMinutes")
+	var points := _stepper("MatchPointsToWin")
+	assert_eq(minutes.value, 5)
+	assert_eq(points.value, 5)
+	assert_true(minutes.editable)
+	assert_false(points.editable, "only the chosen rule's number can change")
+	assert_true((points.get_node(^"Up") as Button).disabled)
+
+
+func test_match_row_picks_the_rule_and_its_number() -> void:
+	var minutes := _stepper("MatchMinutes")
+	var points := _stepper("MatchPointsToWin")
+	_pick("MatchPoints")
+	assert_eq(menu.settings.match_rule, MatchSettings.MatchRule.POINTS)
+	assert_false(_button("MatchTime").button_pressed, "radio buttons: one at a time")
+	assert_true(points.editable)
+	assert_false(minutes.editable)
+	_step(points, "Down", 2)
+	assert_eq(menu.settings.points_to_win, 3)
+	_step(points, "Up", 100)
+	assert_eq(menu.settings.points_to_win, MatchSettings.MAX_POINTS, "kept within the limits")
+
+	_pick("MatchTime")
+	_step(minutes, "Up", 5)
+	assert_eq(menu.settings.match_rule, MatchSettings.MatchRule.TIMED)
+	assert_eq(menu.settings.time_limit_minutes, 10)
+	assert_eq(menu.settings.points_to_win, MatchSettings.MAX_POINTS, "the other number is kept")
+
+	var match_node := menu.build_match()
+	match_node.auto_add_local_player = false
+	add_to_tree(match_node)
+	assert_eq(match_node.time_left_ticks, 10 * 60 * Engine.physics_ticks_per_second)
+
+
+func test_typing_a_number_changes_it() -> void:
+	var minutes := _stepper("MatchMinutes")
+	var field := minutes.get_node(^"Field") as LineEdit
+	field.text = "8"
+	field.text_submitted.emit(field.text)
+	assert_eq(menu.settings.time_limit_minutes, 8)
+	field.text = "lots"
+	field.text_submitted.emit(field.text)
+	assert_eq(menu.settings.time_limit_minutes, 8, "not a number: no change")
+	assert_eq(field.text, "8", "and the old number comes back")
+	field.text = "500"
+	field.text_submitted.emit(field.text)
+	assert_eq(menu.settings.time_limit_minutes, MatchSettings.MAX_MINUTES)
+
+
+## Keyboard and gamepad focus go radio, -, +, radio, - and + along the row, skipping the
+## text field, so they can't get stuck editing it.
+func test_number_field_only_takes_focus_from_a_click() -> void:
+	var minutes := _stepper("MatchMinutes")
+	assert_eq((minutes.get_node(^"Field") as LineEdit).focus_mode, Control.FOCUS_CLICK)
+	assert_eq((minutes.get_node(^"Up") as Button).focus_mode, Control.FOCUS_ALL)
+	var points := _stepper("MatchPointsToWin")
+	assert_eq((points.get_node(^"Up") as Button).focus_mode, Control.FOCUS_NONE,
+			"a number not in use is skipped")
+
+
+## The whole panel, with its margins (20 px above and below, 40 px on the left), fits the
+## default window, and leaves at least 40% of its width for the preview.
+func test_menu_fits_on_screen() -> void:
+	var panel := menu.find_children("*", "PanelContainer", true, false)[0] as PanelContainer
+	var screen := Vector2(ProjectSettings.get_setting("display/window/size/viewport_width"),
+			ProjectSettings.get_setting("display/window/size/viewport_height"))
+	var needed := panel.get_combined_minimum_size() + Vector2(40.0, 40.0)
+	assert_true(needed.y <= screen.y, "the panel needs %d px of %d" % [needed.y, screen.y])
+	assert_true(needed.x <= screen.x * 0.6, "the panel needs %d px of %d" % [needed.x, screen.x])
+
+
 func test_m_in_a_match_goes_back_to_the_menu() -> void:
 	var match_node := menu.build_match()
 	match_node.auto_add_local_player = false

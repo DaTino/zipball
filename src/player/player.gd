@@ -60,6 +60,11 @@ var gravity_enabled := true
 ## false (Swing mode), it lands as a plain rope at its current length and you swing on it,
 ## like the first prototype. Match sets it.
 var auto_reel := true
+## True during a faceoff countdown (D14): you can look around, but you can't move or grapple.
+## You stay at hold_local, turning with the cube. Match sets both.
+var held := false
+## Where a held player stays, in arena-local space (their spawn).
+var hold_local := Vector3.ZERO
 
 var _grapple_was_held := false
 ## Where you hang, in arena-local space (while hanging).
@@ -75,6 +80,13 @@ func _ready() -> void:
 func simulate(input: PlayerInput, delta: float) -> void:
 	yaw = input.yaw
 	pitch = clampf(input.pitch, -Movement.PITCH_LIMIT, Movement.PITCH_LIMIT)
+	if held:
+		# Buttons do nothing yet. A grapple button held through the countdown fires on "GO".
+		grapple_state = GrappleState.OFF
+		_grapple_was_held = false
+		velocity = _velocity_to_stay_at(hold_local, delta)
+		_move_and_bounce()
+		return
 	_update_grapple_button(input.grapple_held, delta)
 	if grapple_state == GrappleState.PULLING \
 			and _distance_to_anchor() <= hang_distance() + ARRIVE_TOLERANCE:
@@ -84,7 +96,7 @@ func simulate(input: PlayerInput, delta: float) -> void:
 		_let_out()
 
 	if grapple_state == GrappleState.HANGING:
-		velocity = _hang_velocity(delta)
+		velocity = _velocity_to_stay_at(_hang_local, delta)
 		_move_and_bounce()
 		return
 
@@ -258,9 +270,10 @@ func _start_hanging() -> void:
 	rope_length = hang_distance()
 
 
-## Velocity that keeps you on your hang point as the cube turns.
-func _hang_velocity(delta: float) -> Vector3:
-	var target := arena.to_global(_hang_local)
+## Velocity that keeps you on an arena-local point (your hang point, or your spawn during a
+## countdown) as the cube turns.
+func _velocity_to_stay_at(local_point: Vector3, delta: float) -> Vector3:
+	var target := arena.to_global(local_point)
 	return arena.velocity_at(target) + (target - global_position) / delta
 
 

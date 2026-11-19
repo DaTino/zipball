@@ -30,9 +30,9 @@ spherical goal.
 | D10 | Movement | No walking or jumping. Grapple plus air control only | 2026-11-12 |
 | D11 | Possession | Auto pickup when your center gets within 4 m of the ball's surface (was 2 m, and about 1.5 m before that); if two players are in range on the same tick, the first in player order gets it. Hooking a loose ball (even the frozen faceoff ball) reels it in at 60 m/s (was 40) with no gravity while you hold the button; you catch it when it reaches pickup range, and letting go leaves it flying with its speed. The ball wins the hook over a zip point unless a zip point is directly in the way. A newer hook takes the ball from an older one. A thrower can't hook their own throw during the regrab wait. Still to do: hooking the carrier steals it; hooking an opponent without the ball does nothing; cooldown after steals | 2026-11-17 |
 | D12 | Throwing | Hold to charge (up to 1 s). A tap throws at 15 m/s, a full charge at 100 m/s (was 50). The ball leaves straight down the crosshair line: your own velocity isn't added (it was until 2026-11-17, and moving players' throws drifted off their aim), so only gravity bends it. The thrower can't grab it back for 0.5 s; anyone else can catch it right away. You can grapple while holding the ball. A bar under the crosshair shows the charge | 2026-11-17 |
-| D13 | Scoring | The ball (thrown or carried) touches the opponent's goal. Own goals count for the other side | 2026-11-12 |
-| D14 | Faceoff | After each goal, the ball is frozen at the cube's center until first touch. Players start at equal distances on their own side, facing it. 3-second countdown | 2026-11-12 |
-| D15 | Match rules | Chosen at start: timed (default 5 min, sudden-death overtime on a tie) or first to N points (default 5) | 2026-11-12 |
+| D13 | Scoring | The ball (thrown, carried or being reeled in) touches a goal sphere: a point for the team that doesn't defend that goal, so own goals count for the other side. The HUD calls it an own goal when the last player to grab or hook the ball defends that goal. The ball then stays where it touched, turning with the cube, for a 2 s GOAL! pause: players keep flying, but nobody can grab or hook the ball and nothing scores. Then the faceoff (D14) | 2026-11-18 |
+| D14 | Faceoff | The match starts with one, and so does each goal (after its pause) and overtime. The ball is frozen at the cube's center until first touch. Players go back to their spawns, at equal distances on their own side, facing it, and are held there for a 3-second countdown: they turn with the cube and can look around, but can't move or grapple. A grapple button held through the countdown fires on "GO!". The clock stops from a goal until play resumes | 2026-11-18 |
+| D15 | Match rules | Chosen on the menu (D23): Time (default 5 min, 1–30) or Points (first to N, default 5, 1–25). A timed match ends the instant the clock hits 0:00; a ball still in the air doesn't count. A tie at 0:00 goes to sudden-death overtime: a faceoff, then the next goal wins. When the match ends, the ball stops where it is, nothing scores, and players can still fly and look around; the HUD shows the result and "Press M for the menu" | 2026-11-18 |
 | D16 | Local devices | Player 1: keyboard and mouse or first gamepad. Player 2: second gamepad. Two keyboard players isn't possible because Windows can't tell two mice apart | 2026-11-12 |
 | D17 | Pipe look | Plain silver with Gouraud (per-vertex) shading, no shadows. Replaces per-axis colors; the sky above and green ground below are enough for orientation | 2026-11-13 |
 | D18 | Finding things | HUD arrows at the screen edge point toward the ball and both goals when they're out of view. In view, they get a small diamond. Each shows its distance. A testing aid for now; revisit for the real HUD | 2026-11-13 |
@@ -40,10 +40,11 @@ spherical goal.
 | D20 | Gravity switch | The menu sets whether a match starts with gravity on. In the match, G / Back still turns downward gravity off and on for everyone, players and ball. The pull back into the cube works either way | 2026-11-17 |
 | D21 | Auto-reel | Modeled on the Q-Claw in *007: Agent Under Fire* multiplayer. Hold the grapple button: the hook flies out (400 m/s, was 200; let go before it lands to cancel). When it lands, the line pulls you toward the zip point at up to 45 m/s (was 30) with no gravity, keeps some of your sideways speed, and brakes so you stop and hang 1.5 m from its surface. Keep holding to hang there, moving with the cube. Let go any time to fly off with your speed. E / R2 lets the line out: the pull stops and it becomes a plain rope you swing on (Q/E change its length at 20 m/s, gravity applies). One button, no new ones. Replaces options A–C. The menu can turn the pull off (D25) | 2026-11-17 |
 | D22 | Ball size and carrying | The menu picks Small, Medium or Large: 2, 3 or 5 m across. Default 3 m (tripled from 1 m on 2026-11-13). A carried ball rides just in front of the carrier, along their aim. It's hidden from the carrier's own camera (it would fill the screen); the HUD says "Ball YOURS" instead. Right after a throw it's also hidden from the thrower until it's 8 m away, so it doesn't flash across their view | 2026-11-17 |
-| D23 | Main menu | The game opens on a menu: Grid Dimension (4, 6, 8, 10), Zip Points (Beams, Orbs), Zip Point Size, Gravity (Off, On), Ball Size, Goal Size, Grapple (Reel, Swing; D25) and Environment (Classic, Space, Snow, Lava, Desert; D26), then Start Game!. A live preview of the cube changes with each choice. It remembers the last choices (`user://match_settings.cfg`); the first time, it shows the original game. M in a match returns to it. Works with a mouse, keyboard or gamepad | 2026-11-17 |
+| D23 | Main menu | The game opens on a menu: Grid Dimension (4, 6, 8, 10), Zip Points (Beams, Orbs), Zip Point Size, Gravity (Off, On), Ball Size, Goal Size, Grapple (Reel, Swing; D25), Environment (Classic, Space, Snow, Lava, Desert; D26) and Match (D15), then Start Game!. Match has two radio buttons, Time and Points, each followed by its number (minutes or points to win) between − and + buttons; only the chosen one's number can change. A mouse can also click the number and type one; keyboard and gamepad focus skip the text, so they can't get stuck editing it. A live preview of the cube changes with each choice. It remembers the last choices (`user://match_settings.cfg`); the first time, it shows the original game. M in a match returns to it. Works with a mouse, keyboard or gamepad | 2026-11-18 |
 | D24 | Orbs | The other kind of zip point: a sphere wherever beams would cross, still a 3D grid. You can grapple them but never bump into them, so nothing kills your momentum; the ball flies through them too. The pull and hang work as on beams. Aim assist is 6° for orbs (3° for beams): an orb is a point and a beam is a line, so with 3° random shots found an orb about a third as often | 2026-11-17 |
 | D25 | Grapple mode | The menu picks Reel (the auto-reel, D21; the default) or Swing: the hook lands as a plain rope at its current length and you swing on it under gravity, like the first prototype; Q / L2 reels in and E / R2 lets out. Hooking the ball reels it in either way | 2026-11-17 |
 | D26 | Environments | Five venues, picked on the menu, each its own scene in `src/scenery/`: **Classic** (blue sky, green ground; unchanged), **Space** (stars, nebulae and a big banded planet below in place of a floor; glowing pale-blue zip points), **Snow** (pale sky, white fog, drifting snow floor, a ring of snowcapped peaks, snowfall; ice-blue zip points), **Lava** (red-orange sky and haze, a floor of crust with glowing, pulsing cracks, a ring of volcanoes with glowing craters, rising embers; gunmetal-gray zip points, which were hot iron until playtest 6 and blended into the reds) and **Desert** (deep blue sky over a sandy haze, dunes with shaded slip faces and wind ripples, a ring of layered red-rock mesas, blowing dust; weathered-wood brown zip points). Zip points never use a team color, so goals stand out. Presentation only: they never change play. Floors sit 420 m below the cube's center, and peaks ring it about 1.4–1.5 km out; they fade into their own haze, so the cube's fog doesn't hide them. Weather fills a box around the camera and stays put in the world, so it streams past as you fly. The sky, floor and peak shaders are in `assets/shaders/` | 2026-11-17 |
+| D27 | Match HUD | Top center: each team's score in its color (yours labeled YOU), with the clock between them: time left, "+m:ss" and OVERTIME in overtime, or the time played and FIRST TO N in a points match. Big text in the upper middle, clear of the crosshair: the countdown (3, 2, 1, with "Get ready", "Faceoff" or "OVERTIME: next goal wins"), "GO!" fading out, "GOAL!" in the scoring team's color ("Teal scores" or "Own goal! Point to Orange"), and the result ("YOU WIN!" or "YOU LOSE", the final score, and "Press M for the menu" below the crosshair). Edge arrows (D18) stay clear of the scoreboard | 2026-11-18 |
 
 ## Arena geometry
 
@@ -85,7 +86,8 @@ grid (10 per side); the menu changes the grid, zip points and sizes (D23).
 
 **To play the current build:** double-click `play.cmd` in the project folder. It opens the main menu
 (D23); pick settings and press Start Game!. A keyboard and mouse and the first gamepad both control
-the one player.
+the one player. The match starts with a 3-second countdown and runs to the result (D15); with one
+player on Teal, Orange scores only from own goals.
 
 ## Build stages
 
@@ -144,12 +146,14 @@ Possession (proximity, snag, steal), charged throws, goals, faceoff, score.
 - [x] Ball 3 m across; grab it within 2 m; it rides in front of the carrier (D11, D22)
 - [x] Throwing (hold to charge, straight along your aim) and ball physics (D8, D12)
 - [x] Hooking a loose ball reels it in to you; 4 m grab range (D11)
-- [ ] Hooking the carrier steals it; cooldown after steals (D11)
-- [ ] Goals and score (D13), faceoff and countdown (D14), match rules (D15)
+- [ ] Hooking the carrier steals it; cooldown after steals (D11). Needs a second player (Stage 3)
+- [x] Goals and score (D13), faceoff and countdown (D14), match rules on the menu (D15, D23),
+  scoreboard, banners and result screen (D27)
 
 ### Stage 3: two players
 
-Side-by-side split screen, device assignment, match settings (timed or points), HUD.
+Side-by-side split screen, device assignment, a HUD per player (the one-player HUD already shows
+the score, clock and result, D27). Match settings (time or points) are already on the menu (D15).
 
 ### Later
 
@@ -202,7 +206,10 @@ Starting values. Adjust them in the files named here.
   300 m/s², no gravity (was 40 m/s at 200 m/s²).
 - **Menu choices:** `src/match/match_settings.gd`. Grid sizes 4, 6, 8, 10. Radii for Small, Medium
   and Large: beams 0.5, 1, 1.5 m; orbs 1, 2, 3 m; ball 1, 1.5, 2.5 m; goals 4, 6, 9 m. Grapple: Reel
-  or Swing. Environment: Classic, Space, Snow, Lava or Desert.
+  or Swing. Environment: Classic, Space, Snow, Lava or Desert. Match: Time, 1–30 min (default 5),
+  or Points, 1–25 (default 5); `MIN_MINUTES` and friends set the limits.
+- **Match timing:** exported on the Match node (`src/match/match.gd`). Countdown 3 s, GOAL! pause
+  2 s. Counted in ticks at the configured tick rate; the clock runs only during play.
 - **Environments:** one scene each in `src/scenery/` (sky, sun, fog, floor, peaks, weather, zip point
   color and glow), shaders in `assets/shaders/`. Floors 420 m below the center, peaks about 1.4 km
   out (Desert mesas 1.5 km), their haze 0.0005 per meter (mesas 0.0003). Lava zip points: albedo

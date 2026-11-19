@@ -7,7 +7,7 @@ extends CharacterBody3D
 ## along the carrier's aim, at a speed set by the charge alone: the carrier's own velocity
 ## isn't added, so it flies where the crosshair points (D12). A loose ball flies under gravity, bounces
 ## off beams and is pulled back when it leaves the cube (D6), using our own movement code, like
-## the players (D8).
+## the players (D8). Match pins it where it is when play stops (after a goal or at the end).
 ##
 ## Match calls simulate() every tick after the players move. _process only decides who sees it.
 
@@ -71,6 +71,14 @@ var regrab_wait := 0.0
 var gravity_enabled := true
 ## The player whose grapple has hooked the ball and is reeling it in, or null.
 var reeled_by: Player = null
+## The last player to grab or hook the ball since the last reset_to(), or null. A goal is an
+## own goal when this player defends the goal the ball went into.
+var last_touch: Player = null
+## True while play is stopped (after a goal, or once the match is over): the ball stays put at
+## pinned_local, turning with the cube, and nobody can grab or hook it. reset_to() ends it.
+var pinned := false
+## Where a pinned ball sits, in arena-local space.
+var pinned_local := Vector3.ZERO
 
 var _throw_was_held := false
 var _mesh: MeshInstance3D
@@ -105,6 +113,9 @@ func _ready() -> void:
 ## player in range (in player order, so it's deterministic). The carrier charges and throws.
 ## A carried ball sits in front of its carrier; a loose one flies.
 func simulate(players: Array[Player], inputs: Array[PlayerInput], delta: float) -> void:
+	if pinned:
+		global_position = arena.to_global(pinned_local)
+		return
 	regrab_wait = maxf(regrab_wait - delta, 0.0)
 	if reeled_by != null and reeled_by.grapple_state != Player.GrappleState.REELING_BALL:
 		reeled_by = null # They let go (or respawned).
@@ -128,21 +139,22 @@ func simulate(players: Array[Player], inputs: Array[PlayerInput], delta: float) 
 
 
 func can_pick_up(player: Player) -> bool:
-	if _waiting_to_regrab(player):
+	if pinned or _waiting_to_regrab(player):
 		return false
 	return player.global_position.distance_to(global_position) <= radius + pickup_distance
 
 
-## Whether `player`'s grapple can hook the ball: it has to be loose, and a thrower can't hook
-## their own throw until they could grab it again.
+## Whether `player`'s grapple can hook the ball: it has to be loose and in play, and a thrower
+## can't hook their own throw until they could grab it again.
 func can_be_hooked_by(player: Player) -> bool:
-	return carrier == null and not _waiting_to_regrab(player)
+	return carrier == null and not pinned and not _waiting_to_regrab(player)
 
 
 ## Called by a player's grapple when its hook reaches the ball. The newest hook wins, which
 ## also wakes up a ball waiting at the faceoff spot.
 func hook(player: Player) -> void:
 	reeled_by = player
+	last_touch = player
 	frozen = false
 
 
@@ -165,14 +177,26 @@ func throw_speed(fraction: float) -> float:
 func reset_to(world_position: Vector3) -> void:
 	carrier = null
 	frozen = true
+	pinned = false
 	velocity = Vector3.ZERO
 	throw_charge = 0.0
 	last_thrower = null
+	last_touch = null
 	regrab_wait = 0.0
 	reeled_by = null
 	_throw_was_held = false
 	global_position = world_position
 	reset_physics_interpolation()
+
+
+## Takes the ball out of play where it is (in the goal it just touched, say): it drops from
+## its carrier or line and stays there, turning with the cube, until the next reset_to().
+func pin() -> void:
+	var touch := last_touch
+	reset_to(global_position)
+	last_touch = touch
+	pinned = true
+	pinned_local = arena.to_local(global_position)
 
 
 func _waiting_to_regrab(player: Player) -> bool:
@@ -183,6 +207,7 @@ func _try_pick_up(players: Array[Player], inputs: Array[PlayerInput]) -> void:
 	for i: int in players.size():
 		if can_pick_up(players[i]):
 			carrier = players[i]
+			last_touch = carrier
 			frozen = false
 			reeled_by = null
 			throw_charge = 0.0

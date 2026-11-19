@@ -15,6 +15,7 @@ var near_pipe: Vector3
 func before_each() -> void:
 	match_node = MATCH_SCENE.instantiate() as Match
 	match_node.auto_add_local_player = false
+	match_node.opening_countdown = false # Start in play.
 	add_to_tree(match_node)
 	match_node.arena.spin_enabled = false
 	spawn = match_node.arena.spawn_local_position(0)
